@@ -1,18 +1,18 @@
-const Menu = require('../models/Menu');
-const Restaurant = require('../models/Restaurant');
-const AppError = require('../utils/AppError');
+import Menu, { find, findByIdAndDelete, findByIdAndUpdate, findOne } from '../models/Menu.js';
+import { findById } from '../models/Restaurant.js';
+import AppError from '../utils/AppError.js';
 
 // Create or Update a Menu item
 const createOrUpdateMenu = async (req, res, next) => {
   const { name, description, price, category, ingredients, dietaryTags, image, available, specialInstructions } = req.body;
   const { restaurantId } = req.params;
 
-  const restaurant = await Restaurant.findById(restaurantId);
+  const restaurant = await findById(restaurantId);
   if (!restaurant) {
     return next(new AppError('Restaurant not found', 404));
   }
 
-  const existingMenu = await Menu.findOne({ restaurantId, name });
+  const existingMenu = await findOne({ restaurantId, name });
   if (existingMenu) {
     return next(new AppError('Menu item already exists for this restaurant', 400));
   }
@@ -43,7 +43,7 @@ const createOrUpdateMenu = async (req, res, next) => {
 const getMenu = async (req, res, next) => {
   const { restaurantId } = req.params;
 
-  const menu = await Menu.find({ restaurantId });
+  const menu = await find({ restaurantId });
   if (!menu) {
     return next(new AppError('Menu not found for this restaurant', 404));
   }
@@ -59,7 +59,7 @@ const updateMenu = async (req, res, next) => {
   const { menuId } = req.params;
   const updatedData = req.body;
 
-  const updatedMenu = await Menu.findByIdAndUpdate(menuId, updatedData, { new: true });
+  const updatedMenu = await findByIdAndUpdate(menuId, updatedData, { new: true });
 
   if (!updatedMenu) {
     return next(new AppError('Menu item not found', 404));
@@ -76,7 +76,7 @@ const updateMenu = async (req, res, next) => {
 const deleteMenu = async (req, res, next) => {
   const { menuId } = req.params;
 
-  const deletedMenu = await Menu.findByIdAndDelete(menuId);
+  const deletedMenu = await findByIdAndDelete(menuId);
 
   if (!deletedMenu) {
     return next(new AppError('Menu item not found', 404));
@@ -88,7 +88,7 @@ const deleteMenu = async (req, res, next) => {
   });
 };
 
-module.exports = {
+export default {
   createOrUpdateMenu,
   getMenu,
   updateMenu,

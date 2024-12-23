@@ -1,6 +1,5 @@
-const Order = require('../models/Order');
-const AppError = require('../utils/AppError');
-const { io } = require('../config/server'); 
+import Order, { find, findById, findByIdAndDelete } from '../models/Order.js';
+import AppError from '../utils/AppError.js';
 
 // Create a new order (Guest or Customer)
 const createOrder = async (req, res, next) => {
@@ -42,7 +41,7 @@ const getAllOrders = async (req, res, next) => {
   }
 
   try {
-    const orders = await Order.find({ restaurantId: req.restaurant._id }).populate('items.itemId', 'name price');
+    const orders = await find({ restaurantId: req.restaurant._id }).populate('items.itemId', 'name price');
 
     res.status(200).json({
       message: 'Orders fetched successfully!',
@@ -58,7 +57,7 @@ const getOrderById = async (req, res, next) => {
   const { orderId } = req.params;
 
   try {
-    const order = await Order.findById(orderId).populate('items.itemId', 'name price');
+    const order = await findById(orderId).populate('items.itemId', 'name price');
 
     if (!order) {
       return next(new AppError('Order not found', 404));
@@ -82,7 +81,7 @@ const updateOrderStatus = async (req, res, next) => {
   }
 
   try {
-    const order = await Order.findById(orderId);
+    const order = await findById(orderId);
 
     if (!order) {
       return next(new AppError('Order not found', 404));
@@ -112,7 +111,7 @@ const deleteOrder = async (req, res, next) => {
   const { orderId } = req.params;
 
   try {
-    const order = await Order.findByIdAndDelete(orderId);
+    const order = await findByIdAndDelete(orderId);
 
     if (!order) {
       return next(new AppError('Order not found', 404));
@@ -128,7 +127,7 @@ const deleteOrder = async (req, res, next) => {
   }
 };
 
-module.exports = {
+export default {
   createOrder,
   getAllOrders,
   getOrderById,
