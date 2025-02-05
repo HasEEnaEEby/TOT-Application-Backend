@@ -1,18 +1,19 @@
 // index.js
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 import dotenv from 'dotenv';
-import express from 'express';
-import { configureServer } from './src/config/server.js';
-import { configureRoutes } from './src/config/routes.js';
-import { configureProcessHandlers } from './src/config/processHandlers.js';
-import validateEnv from './src/config/validateEnv.js';
-import connectDB from './src/config/db.js';
-import errorMiddleware from './src/middleware/errorMiddleware.js';
-import logger from './src/utils/logger.js';
-import emailService from './src/services/emailservices.js';
-import { validateEmailConfig } from './src/config/email.js';
 import EventEmitter from 'events';
+import express from 'express';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+import connectDB from './src/config/db.js';
+import { validateEmailConfig } from './src/config/email.js';
+import { configureProcessHandlers } from './src/config/processHandlers.js';
+import { configureRoutes } from './src/config/routes.js';
+import { configureServer } from './src/config/server.js';
+import validateEnv from './src/config/validateEnv.js';
+import errorMiddleware from './src/middleware/errorMiddleware.js';
+import emailService from './src/services/emailservices.js';
+import logger from './src/utils/logger.js';
+import 'winston-daily-rotate-file';
 
 // Load and validate environment variables
 dotenv.config({ path: join(dirname(fileURLToPath(import.meta.url)), '.env') });
