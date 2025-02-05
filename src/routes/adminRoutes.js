@@ -1,18 +1,19 @@
 import express from 'express';
+import { adminController } from '../controllers/adminController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import roleMiddleware from '../middleware/roleMiddleware.js';
-import adminController from '../controllers/adminController.js';
-import logger from '../utils/logger.js';
 import { validateRequest } from '../middleware/validateRequest.js';
+import logger from '../utils/logger.js';
 import { bulkActionValidator } from '../validators/adminValidation.js';
 
 const router = express.Router();
 
+// Logging middleware
 router.use((req, res, next) => {
   logger.info('Admin route accessed', {
     method: req.method,
     path: req.originalUrl,
-    ip: req.ip
+    requestId: req.id
   });
   next();
 });
@@ -20,78 +21,26 @@ router.use((req, res, next) => {
 router.use(protect);
 router.use(roleMiddleware(['admin']));
 
-router.get(
-  '/restaurants/pending',
-  async (req, res, next) => {
-    try {
-      logger.info('Fetching pending restaurants', { adminId: req.user._id });
-      await adminController.getPendingRestaurants(req, res, next);
-    } catch (error) {
-      next(error);
-    }
-  }
-);
+// Restaurant management routes
+router.route('/restaurants/pending')
+  .get(adminController.getPendingRestaurants);
 
-router.post(
-  '/restaurants/:id/approve',
-  async (req, res, next) => {
-    try {
-      logger.info('Approving restaurant', { 
-        adminId: req.user._id,
-        restaurantId: req.params.id 
-      });
-      await adminController.approveRestaurant(req, res, next);
-    } catch (error) {
-      next(error);
-    }
-  }
-);
+router.route('/restaurants/approve')
+  .post(adminController.approveRestaurant);
 
-router.post(
-  '/restaurants/:id/reject',
-  async (req, res, next) => {
-    try {
-      logger.info('Rejecting restaurant', { 
-        adminId: req.user._id,
-        restaurantId: req.params.id 
-      });
-      await adminController.rejectRestaurant(req, res, next);
-    } catch (error) {
-      next(error);
-    }
-  }
-);
+router.route('/restaurants/reject')
+  .post(adminController.rejectRestaurant);
 
-router.post(
-  '/restaurants/bulk-approve',
-  validateRequest(bulkActionValidator),
-  async (req, res, next) => {
-    try {
-      logger.info('Bulk approving restaurants', { 
-        adminId: req.user._id,
-        restaurantIds: req.body.ids 
-      });
-      await adminController.bulkApproveRestaurants(req, res, next);
-    } catch (error) {
-      next(error);
-    }
-  }
-);
+router.route('/restaurants/bulk-approve')
+  .post(
+    validateRequest(bulkActionValidator),
+    adminController.bulkApproveRestaurants
+  );
 
-router.post(
-  '/restaurants/bulk-reject',
-  validateRequest(bulkActionValidator),
-  async (req, res, next) => {
-    try {
-      logger.info('Bulk rejecting restaurants', { 
-        adminId: req.user._id,
-        restaurantIds: req.body.ids 
-      });
-      await adminController.bulkRejectRestaurants(req, res, next);
-    } catch (error) {
-      next(error);
-    }
-  }
-);
+router.route('/restaurants/bulk-reject')
+  .post(
+    validateRequest(bulkActionValidator),
+    adminController.bulkRejectRestaurants
+  );
 
 export default router;
