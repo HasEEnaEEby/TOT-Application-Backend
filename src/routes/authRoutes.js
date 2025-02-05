@@ -1,15 +1,10 @@
-// src/routes/authRoutes.js
 import express from 'express';
+import authController from '../controllers/authController.js';
 import {
-  getProfile,
-  login,
-  logout,
-  refreshToken,
-  resendVerification,
-  signup,
-  updateProfile,
-  verifyEmail
-} from '../controllers/authController.js';
+  optionalAuth,
+  protect,
+  admin
+} from '../middleware/authMiddleware.js';
 import { validateRequest } from '../middleware/validateRequest.js';
 import logger from '../utils/logger.js';
 import {
@@ -20,48 +15,105 @@ import {
 
 const router = express.Router();
 
-// Registration and Login
+/**
+ * Public routes
+ */
+
+// Registration endpoints
 router.post('/signup', 
   validateRequest(registerValidator), 
   (req, res, next) => {
     logger.info('Signup attempt', {
       email: req.body.email,
-      role: req.body.role
+      role: req.body.role,
+      requestId: req.id
     });
     next();
   },
-  signup
+  authController.signup
 );
 
+// Authentication endpoints
 router.post('/login',
   validateRequest(loginValidator),
   (req, res, next) => {
-    logger.info('Login attempt', { email: req.body.email });
+    logger.info('Login attempt', { 
+      email: req.body.email,
+      requestId: req.id 
+    });
     next();
   }, 
-  login
+  authController.login
 );
 
-// Email verification route - handle token in URL
+// Email verification endpoints
 router.get('/verify-email/:token', 
   (req, res, next) => {
     logger.info('Email verification attempt', { 
-      token: req.params.token.substring(0, 10) + '...' 
+      token: req.params.token.substring(0, 10) + '...',
+      requestId: req.id
     });
     next();
   },
-  verifyEmail
+  authController.verifyEmail
 );
 
-// Profile management
 router.post('/resend-verification',
   validateRequest(emailValidator),
-  resendVerification
+  authController.resendVerification
 );
 
-router.post('/refresh-token', refreshToken);
-router.post('/logout', logout);
-router.get('/profile', getProfile);
-router.patch('/profile', updateProfile);
+// Token management endpoints
+router.post('/refresh-token', 
+  optionalAuth,  // Optional authentication to handle both scenarios
+  authController.refreshToken
+);
+
+router.post('/logout', 
+  protect,  // Require authentication for logout
+  authController.logout
+);
+
+/**
+ * Admin routes
+ */
+router.post('/admin/register', 
+  validateRequest(registerValidator), 
+  (req, res, next) => {
+    logger.info('Admin registration attempt', {
+      email: req.body.email,
+      role: 'admin',
+      requestId: req.id
+    });
+    next();
+  },
+  authController.adminRegister
+);
+
+router.post('/admin/login',
+  validateRequest(loginValidator),
+  (req, res, next) => {
+    logger.info('Admin login attempt', {
+      email: req.body.email,
+      requestId: req.id
+    });
+    next();
+  },
+  authController.adminLogin
+);
+
+
+/**
+ * Protected routes - require authentication
+ */
+router.get('/profile', 
+  protect,  // Required authentication
+  authController.getProfile
+);
+
+router.patch('/profile',
+  protect,  // Required authentication
+  authController.updateProfile
+);
 
 export default router;
