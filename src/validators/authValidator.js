@@ -1,4 +1,3 @@
-// src/validators/authValidator.js
 import { body } from 'express-validator';
 import { ROLES } from '../constants/roles.js';
 
@@ -15,7 +14,8 @@ export const registerValidator = [
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
     .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
   
-  body('username')
+    body('username')
+    .if(body('role').equals('customer')) 
     .trim()
     .isLength({ min: 2 })
     .withMessage('Username must be at least 2 characters long'),
@@ -127,3 +127,24 @@ export const profileUpdateValidator = [
     .matches(/^\+?[\d\s-]+$/)
     .withMessage('Please provide a valid contact number')
 ];
+
+export const adminRegisterValidator = {
+  email: {
+    trim: true,
+    isEmail: true,
+    normalizeEmail: true,
+    errorMessage: 'Valid email is required'
+  },
+  password: {
+    isLength: {
+      options: { min: 8 },
+      errorMessage: 'Password must be at least 8 characters long'
+    }
+  },
+  role: {
+    equals: {
+      options: ['admin'],
+      errorMessage: 'Role must be admin'
+    }
+  }
+};
