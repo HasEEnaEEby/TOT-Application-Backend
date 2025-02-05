@@ -1,5 +1,3 @@
-// src/services/emailservices.js
-import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 import logger from '../utils/logger.js';
 
@@ -11,8 +9,8 @@ class EmailService {
       secure: false,
       requireTLS: true,
       auth: {
-        user: "e240c254403eb4",
-        pass: "fc7421274e8527"
+        user: "fe22594c3058be",
+        pass: "36be25f5ed5a3b"
       },
       tls: {
         ciphers: 'SSLv3',
@@ -53,7 +51,7 @@ class EmailService {
       }
 
       const mailOptions = {
-        from: `"TOT - Touch, Order, Taste" <${process.env.EMAIL_FROM}>`,
+        from: `"TOT - Touch, Order, Taste" <${process.env.EMAIL_FROM || 'noreply@tot.com'}>`,
         to,
         subject,
         html
@@ -78,28 +76,8 @@ class EmailService {
         to,
         subject
       });
-      return {
-        success: false,
-        error: error.message
-      };
+      throw error;
     }
-  }
-
-  generateVerificationToken() {
-    // Generate raw token
-    const rawToken = crypto.randomBytes(32).toString('hex');
-    
-    // Generate hashed version for storage
-    const hashedToken = crypto
-      .createHash('sha256')
-      .update(rawToken)
-      .digest('hex');
-
-    return {
-      rawToken,
-      hashedToken,
-      expires: Date.now() + 24 * 60 * 60 * 1000 // 24 hours
-    };
   }
 
   async sendVerificationEmail(user, verificationToken) {
@@ -107,24 +85,34 @@ class EmailService {
       if (!user || !verificationToken) {
         throw new Error('Missing user or verification token');
       }
-      const verificationLink = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
+
+      logger.info('Preparing verification email', {
+        userId: user._id,
+        email: user.email,
+        tokenPreview: verificationToken.substring(0, 10) + '...'
+      });
+
+      // Use environment variable for frontend URL with fallback
+      const verificationLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email/${verificationToken}`;
       
       const result = await this.sendEmail({
         to: user.email,
         subject: '✨ Verify Your TOT Account',
         html: this.generateVerificationEmail(user, verificationLink)
       });
-  
-      logger.info('Verification email sent', {
+
+      logger.info('Verification email sent successfully', {
         userId: user._id,
-        email: user.email
+        email: user.email,
+        messageId: result.messageId
       });
-  
+
       return result;
     } catch (error) {
       logger.error('Failed to send verification email', {
         error: error.message,
-        userId: user?._id
+        userId: user?._id,
+        email: user?.email
       });
       throw error;
     }
@@ -212,15 +200,39 @@ class EmailService {
   }
 
   async sendRestaurantRegistrationEmail(user) {
-    if (!user || !user.restaurantName) {
-      throw new Error('Invalid user data for restaurant registration email');
-    }
+    try {
+      if (!user || !user.restaurantName) {
+        throw new Error('Invalid user data for restaurant registration email');
+      }
 
-    return this.sendEmail({
-      to: user.email,
-      subject: '🏮 Your TOT Restaurant Application is Pending Review',
-      html: this.generateRestaurantPendingEmail(user)
-    });
+      logger.info('Preparing restaurant registration email', {
+        userId: user._id,
+        email: user.email,
+        restaurantName: user.restaurantName
+      });
+
+      const result = await this.sendEmail({
+        to: user.email,
+        subject: '🏮 Your TOT Restaurant Application is Pending Review',
+        html: this.generateRestaurantPendingEmail(user)
+      });
+
+      logger.info('Restaurant registration email sent successfully', {
+        userId: user._id,
+        email: user.email,
+        messageId: result.messageId
+      });
+
+      return result;
+    } catch (error) {
+      logger.error('Failed to send restaurant registration email', {
+        error: error.message,
+        userId: user?._id,
+        email: user?.email,
+        restaurantName: user?.restaurantName
+      });
+      throw error;
+    }
   }
 
   generateRestaurantPendingEmail(user) {
@@ -231,6 +243,10 @@ class EmailService {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Your TOT Restaurant Registration</title>
+        <style>
+          a { text-decoration: none; }
+          a:hover { text-decoration: underline; }
+        </style>
       </head>
       <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f9fafb;">
         <div style="max-width: 600px; margin: 0 auto; background-color: white; border-radius: 15px; overflow: hidden; margin-top: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
@@ -244,43 +260,32 @@ class EmailService {
           <!-- Content -->
           <div style="padding: 40px 30px;">
             <h2 style="margin: 0 0 20px; color: #1f2937; font-size: 24px; text-align: center;">
-              Registration Received! 🎉
+              Thank you for registering ${user.restaurantName}! 🍴
             </h2>
             
-            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 25px;">
-              Thank you for registering <strong>${user.restaurantName}</strong>! Our admin team will review your application within 24-48 hours.
+            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 25px; text-align: center;">
+              Your restaurant registration is currently under review. Our team will carefully evaluate your application and get back to you soon.
             </p>
 
-            <!-- Registration Details -->
-            <div style="background-color: #f3f4f6; border-radius: 10px; padding: 20px; margin: 25px 0;">
-              <h3 style="color: #1f2937; margin-top: 0;">Your Registration Details:</h3>
-              <ul style="color: #4b5563; margin: 10px 0;">
-                <li>Restaurant Name: ${user.restaurantName}</li>
-                <li>Location: ${user.location}</li>
-                <li>Contact: ${user.contactNumber}</li>
+            <!-- What to Expect Section -->
+            <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+              <h3 style="color: #1f2937; font-size: 18px; margin-bottom: 15px;">What happens next?</h3>
+              <ul style="color: #4b5563; margin: 15px 0; padding-left: 20px;">
+                <li style="margin-bottom: 8px;">Our team will review your application</li>
+                <li style="margin-bottom: 8px;">You'll receive an approval notification email</li>
+                <li style="margin-bottom: 8px;">Set up your restaurant profile and menu</li>
+                <li style="margin-bottom: 8px;">Start accepting orders through TOT</li>
               </ul>
             </div>
 
-            <!-- Next Steps -->
-            <div style="background-color: #fff3f3; border-radius: 10px; padding: 20px; margin: 25px 0;">
-              <h3 style="color: #1f2937; margin-top: 0;">Next Steps:</h3>
-              <ol style="color: #4b5563;">
-                <li>Admin review (1-2 business days)</li>
-                <li>Approval confirmation email</li>
-                <li>Complete restaurant profile</li>
-                <li>Start accepting orders!</li>
-              </ol>
-            </div>
-
             <!-- Support Section -->
-            <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-              <p style="color: #6b7280; font-size: 14px; text-align: center;">
-                Questions? Contact our partner support:<br>
-                <a href="mailto:partners@tot-app.com" style="color: #FF6B6B; text-decoration: none;">partners@tot-app.com</a>
+            <div style="margin-top: 30px; text-align: center; padding: 15px; background-color: #F3F4F6; border-radius: 8px;">
+              <p style="color: #4B5563; font-size: 14px; margin: 0;">
+                Need assistance? Contact our support team at support@tot.com
               </p>
             </div>
           </div>
-
+          
           <!-- Footer -->
           <div style="background-color: #f9fafb; padding: 20px; text-align: center;">
             <p style="color: #6b7280; font-size: 12px; margin: 0;">
@@ -294,6 +299,6 @@ class EmailService {
   }
 }
 
-// Create and export single instance
-export const emailService = new EmailService();
+// Create and export a single instance
+const emailService = new EmailService();
 export default emailService;
