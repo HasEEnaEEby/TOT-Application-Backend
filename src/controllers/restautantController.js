@@ -1,192 +1,286 @@
-import * as restaurantService from '../services/restaurantsService.js';
+// src/controllers/restaurantController.js
+import { deleteFromCloudinary, uploadToCloudinary } from '../config/cloudinary.js';
+import { ROLES } from '../constants/roles.js';
+import MenuItem from '../models/MenuItem.js';
+import { User } from '../models/User.js';
 import AppError from '../utils/AppError.js';
+import { catchAsync } from '../utils/errorHandler.js';
+import logger from '../utils/logger.js';
 
-// Restaurant Approval Management
-export const approveRestaurant = async (req, res, next) => {
-    try {
-        const { id } = req.params;
-        
-        const restaurant = await restaurantService.updateRestaurantStatus(id, 'approved');
-        
-        if (!restaurant) {
-            return next(new AppError('Restaurant request not found', 404));
+export const restaurantController = {
+  // Restaurant Profile Methods
+  getProfile: catchAsync(async (req, res) => {
+    logger.info('Fetching restaurant profile', {
+      userId: req.user._id,
+      requestId: req.id
+    });
+
+    const restaurant = await User.findOne({
+      _id: req.user._id,
+      role: ROLES.RESTAURANT
+    }).select('-password -adminCode');
+
+    if (!restaurant) {
+      throw new AppError('Restaurant profile not found', 404);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: { restaurant }
+    });
+  }),
+
+  updateProfile: catchAsync(async (req, res) => {
+    logger.info('Updating restaurant profile', {
+      userId: req.user._id,
+      requestId: req.id
+    });
+
+    const allowedUpdates = [
+      'restaurantName',
+      'location',
+      'contactNumber',
+      'quote',
+      'businessHours',
+      'description',
+      'cuisine'
+    ];
+
+    const updates = Object.keys(req.body)
+      .filter(key => allowedUpdates.includes(key))
+      .reduce((obj, key) => {
+        obj[key] = req.body[key];
+        return obj;
+      }, {});
+
+    const restaurant = await User.findOneAndUpdate(
+      { _id: req.user._id, role: ROLES.RESTAURANT },
+      updates,
+      { new: true, runValidators: true }
+    ).select('-password -adminCode');
+
+    if (!restaurant) {
+      throw new AppError('Restaurant not found', 404);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: { restaurant }
+    });
+  }),
+
+  uploadImage: catchAsync(async (req, res) => {
+    if (!req.file) {
+      throw new AppError('Please provide an image', 400);
+    }
+
+    const imageType = req.body.type;
+    if (!['profile', 'cover'].includes(imageType)) {
+      throw new AppError('Invalid image type. Must be either profile or cover', 400);
+    }
+
+    // Convert buffer to base64
+    const fileStr = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+
+    // Upload to Cloudinary
+    const result = await uploadToCloudinary(fileStr, {
+      folder: `restaurants/${req.user._id}/${imageType}`
+    });
+
+    // Delete old image if exists
+    const imageField = imageType === 'profile' ? 'restaurantImage' : 'coverImage';
+    if (req.user[imageField]?.publicId) {
+      await deleteFromCloudinary(req.user[imageField].publicId);
+    }
+
+    // Update user document
+    const restaurant = await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        [imageField]: {
+          publicId: result.publicId,
+          url: result.url
         }
+      },
+      { new: true }
+    ).select('-password -adminCode');
 
-        res.status(200).json({
-            status: 'success',
-            message: 'Restaurant approved successfully',
-            data: { restaurant }
-        });
-    } catch (error) {
-        next(error);
+    res.status(200).json({
+      status: 'success',
+      data: { restaurant }
+    });
+  }),
+
+  deleteImage: catchAsync(async (req, res) => {
+    const { type } = req.params;
+    if (!['profile', 'cover'].includes(type)) {
+      throw new AppError('Invalid image type', 400);
     }
+
+    const imageField = type === 'profile' ? 'restaurantImage' : 'coverImage';
+    const user = await User.findById(req.user._id);
+
+    if (!user[imageField]?.publicId) {
+      throw new AppError('No image found', 404);
+    }
+
+    await deleteFromCloudinary(user[imageField].publicId);
+
+    await User.findByIdAndUpdate(req.user._id, {
+      $unset: { [imageField]: 1 }
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Image deleted successfully'
+    });
+  }),
+
+  // Menu Management Methods
+  createMenuItem: catchAsync(async (req, res) => {
+    logger.info('Creating new menu item', {
+      userId: req.user._id,
+      requestId: req.id
+    });
+
+    const restaurant = await User.findOne({ 
+      _id: req.user._id, 
+      role: ROLES.RESTAURANT,
+      status: 'approved' 
+    });
+
+    if (!restaurant) {
+      throw new AppError('Restaurant not found or not approved', 404);
+    }
+
+    const menuItem = await MenuItem.create({
+      ...req.body,
+      restaurant: restaurant._id,
+    });
+
+    res.status(201).json({
+      status: 'success',
+      data: { menuItem }
+    });
+  }),
+
+  getMenuItems: catchAsync(async (req, res) => {
+    const menuItems = await MenuItem.find({ 
+      restaurant: req.user._id 
+    }).sort({ category: 1, name: 1 });
+
+    res.status(200).json({
+      status: 'success',
+      results: menuItems.length,
+      data: { menuItems }
+    });
+  }),
+
+  getMenuItem: catchAsync(async (req, res) => {
+    const menuItem = await MenuItem.findOne({
+      _id: req.params.id,
+      restaurant: req.user._id
+    });
+
+    if (!menuItem) {
+      throw new AppError('Menu item not found', 404);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: { menuItem }
+    });
+  }),
+
+  updateMenuItem: catchAsync(async (req, res) => {
+    const allowedUpdates = [
+      'name',
+      'description',
+      'price',
+      'category',
+      'isAvailable',
+      'isVegetarian',
+      'spicyLevel',
+      'allergens',
+      'preparationTime',
+      'nutritionalInfo'
+    ];
+
+    const updates = Object.keys(req.body)
+      .filter(key => allowedUpdates.includes(key))
+      .reduce((obj, key) => {
+        obj[key] = req.body[key];
+        return obj;
+      }, {});
+
+    const menuItem = await MenuItem.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        restaurant: req.user._id
+      },
+      updates,
+      { new: true, runValidators: true }
+    );
+
+    if (!menuItem) {
+      throw new AppError('Menu item not found', 404);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: { menuItem }
+    });
+  }),
+
+  deleteMenuItem: catchAsync(async (req, res) => {
+    const menuItem = await MenuItem.findOneAndDelete({
+      _id: req.params.id,
+      restaurant: req.user._id
+    });
+
+    if (!menuItem) {
+      throw new AppError('Menu item not found', 404);
+    }
+
+    res.status(204).json({
+      status: 'success',
+      data: null
+    });
+  }),
+
+  getMenuItemsByCategory: catchAsync(async (req, res) => {
+    const { category } = req.params;
+
+    const menuItems = await MenuItem.find({
+      restaurant: req.user._id,
+      category
+    }).sort({ name: 1 });
+
+    res.status(200).json({
+      status: 'success',
+      results: menuItems.length,
+      data: { menuItems }
+    });
+  }),
+
+  toggleMenuItemAvailability: catchAsync(async (req, res) => {
+    const menuItem = await MenuItem.findOne({
+      _id: req.params.id,
+      restaurant: req.user._id
+    });
+
+    if (!menuItem) {
+      throw new AppError('Menu item not found', 404);
+    }
+
+    menuItem.isAvailable = !menuItem.isAvailable;
+    await menuItem.save();
+
+    res.status(200).json({
+      status: 'success',
+      data: { menuItem }
+    });
+  })
 };
 
-export const rejectRestaurant = async (req, res, next) => {
-    try {
-        const { id } = req.params;
-        
-        const restaurant = await restaurantService.updateRestaurantStatus(id, 'rejected');
-        
-        if (!restaurant) {
-            return next(new AppError('Restaurant request not found', 404));
-        }
-
-        res.status(200).json({
-            status: 'success',
-            message: 'Restaurant rejected successfully',
-            data: { restaurant }
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-
-export const bulkApprove = async (req, res, next) => {
-    try {
-        const { ids } = req.body;
-
-        if (!Array.isArray(ids) || ids.length === 0) {
-            return next(new AppError('Invalid request: ids array required', 400));
-        }
-
-        const result = await restaurantService.bulkUpdateStatus(ids, 'approved');
-
-        res.status(200).json({
-            status: 'success',
-            message: `${result.modifiedCount} restaurants approved successfully`
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-
-export const bulkReject = async (req, res, next) => {
-    try {
-        const { ids } = req.body;
-
-        if (!Array.isArray(ids) || ids.length === 0) {
-            return next(new AppError('Invalid request: ids array required', 400));
-        }
-
-        const result = await restaurantService.bulkUpdateStatus(ids, 'rejected');
-
-        res.status(200).json({
-            status: 'success',
-            message: `${result.modifiedCount} restaurants rejected successfully`
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-
-// Menu Item Management
-export const addMenuItem = async (req, res, next) => {
-    try {
-        const { name, price, description, category } = req.body;
-        const restaurantId = req.user.restaurant;
-
-        if (!restaurantId) return next(new AppError('Unauthorized access.', 403));
-
-        const menuItemData = { name, price, description, category };
-        const newMenuItem = await restaurantService.addMenuItem(restaurantId, menuItemData);
-
-        res.status(201).json({
-            status: 'success',
-            data: { menuItem: newMenuItem },
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-
-export const getMenuItems = async (req, res, next) => {
-    try {
-        const restaurantId = req.user.restaurant;
-
-        if (!restaurantId) return next(new AppError('Unauthorized access.', 403));
-
-        const menu = await restaurantService.getMenuItems(restaurantId);
-
-        res.status(200).json({
-            status: 'success',
-            data: { menu },
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-
-export const updateMenuItem = async (req, res, next) => {
-    try {
-        const { id } = req.params;
-        const restaurantId = req.user.restaurant;
-        const updateData = req.body;
-
-        if (!restaurantId) return next(new AppError('Unauthorized access.', 403));
-
-        const updatedMenuItem = await restaurantService.updateMenuItem(restaurantId, id, updateData);
-
-        res.status(200).json({
-            status: 'success',
-            data: { menuItem: updatedMenuItem },
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-
-export const deleteMenuItem = async (req, res, next) => {
-    try {
-        const { id } = req.params;
-        const restaurantId = req.user.restaurant;
-
-        if (!restaurantId) return next(new AppError('Unauthorized access.', 403));
-
-        await restaurantService.deleteMenuItem(restaurantId, id);
-
-        res.status(204).json({
-            status: 'success',
-            message: 'Menu item deleted successfully.',
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-
-// Get Restaurant Status
-export const getRestaurantStatus = async (req, res, next) => {
-    try {
-        const { id } = req.params;
-        const restaurant = await restaurantService.getRestaurantById(id);
-        
-        if (!restaurant) {
-            return next(new AppError('Restaurant not found', 404));
-        }
-
-        res.status(200).json({
-            status: 'success',
-            data: {
-                status: restaurant.status,
-                restaurantName: restaurant.restaurantName,
-                location: restaurant.location
-            }
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-
-// Get Pending Restaurant Requests
-export const getPendingRestaurants = async (req, res, next) => {
-    try {
-        const pendingRestaurants = await restaurantService.getPendingRestaurants();
-
-        res.status(200).json({
-            status: 'success',
-            data: { restaurants: pendingRestaurants }
-        });
-    } catch (error) {
-        next(error);
-    }
-};
+export default restaurantController;

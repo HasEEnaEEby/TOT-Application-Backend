@@ -1,19 +1,39 @@
+// src/routes/restaurantRoutes.js
 import express from 'express';
-import {
-    addMenuItem,
-    getMenuItems,
-    updateMenuItem,
-    deleteMenuItem,
-} from '../controllers/restautantController.js';
-import { protect, restaurant } from '../middleware/authMiddleware.js';
-import { validateRequest } from '../middleware/validateRequest.js';
-import { menuItemValidator } from '../validators/restaurantValidator.js';
+import { restaurantController } from '../controllers/restaurantController.js';
+import { protect, restrictTo } from '../middleware/authMiddleware.js';
+import upload from '../middleware/uploadMiddleware.js';
+import { validateMenuItem } from '../validators/restaurantValidator.js';
 
 const router = express.Router();
 
-router.post('/menu', protect, restaurant, validateRequest(menuItemValidator), addMenuItem);
-router.get('/menu', protect, restaurant, getMenuItems);
-router.put('/menu/:id', protect, restaurant, validateRequest(menuItemValidator), updateMenuItem);
-router.delete('/menu/:id', protect, restaurant, deleteMenuItem);
+// Apply authentication and role middleware to all routes
+router.use(protect);
+router.use(restrictTo('restaurant'));
+
+// Profile Routes
+router.get('/profile', restaurantController.getProfile);
+router.put('/profile', restaurantController.updateProfile);
+
+// Image Upload Routes
+router.post(
+  '/upload-image',
+  upload.single('image'),
+  restaurantController.uploadImage
+);
+router.delete('/image/:type', restaurantController.deleteImage);
+
+// Menu Routes
+router.route('/menu')
+  .get(restaurantController.getMenuItems)
+  .post(validateMenuItem, restaurantController.createMenuItem);
+
+router.route('/menu/:id')
+  .get(restaurantController.getMenuItem)
+  .put(validateMenuItem, restaurantController.updateMenuItem)
+  .delete(restaurantController.deleteMenuItem);
+
+router.get('/menu/category/:category', restaurantController.getMenuItemsByCategory);
+router.patch('/menu/:id/toggle-availability', restaurantController.toggleMenuItemAvailability);
 
 export default router;

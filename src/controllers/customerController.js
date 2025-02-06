@@ -1,5 +1,3 @@
-// src/controllers/customerController.js
-
 export const getCustomerDetails = (req, res, next) => {
     try {
         // You can add logic here to fetch customer details
