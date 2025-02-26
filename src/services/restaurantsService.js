@@ -32,7 +32,7 @@ export const bulkUpdateStatus = async (ids, status) => {
     const result = await Restaurant.updateMany(
         { 
             _id: { $in: ids },
-            status: 'pending' // Only update pending requests
+            status: 'pending'
         },
         { 
             status,
