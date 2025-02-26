@@ -33,31 +33,24 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  verificationToken: {
-    type: String,
-    select: false
-  },
+  verificationToken: String,
   verificationTokenUsed: {
     type: Boolean,
     default: false
   },
-  verificationCode: {
-    type: String,
-    select: false
-  },
-  verificationExpires: {
-    type: Date,
-    select: false
-  },
-  passwordResetToken: {
-    type: String,
-    select: false
-  },
-  passwordResetExpires: {
-    type: Date,
-    select: false
-  },
+  verificationCode: String,
+  verificationExpires: Date,
+  passwordResetToken: String,
+  passwordResetExpires: Date,
   lastLogin: Date,
+  
+  // Restaurant specific fields
+  restaurant: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Restaurant', 
+    default: null
+  },
+
   restaurantName: {
     type: String,
     required: function() { return this.role === ROLES.RESTAURANT; }
@@ -70,12 +63,52 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: function() { return this.role === ROLES.RESTAURANT; }
   },
-  adminCode: {
-    type: String,
-    select: false,
-    sparse: true
+  
+  subscriptionPro: {
+    type: Boolean,
+    default: false
   },
-  quote: String,
+  subscriptionAmount: {
+    type: Number,
+    default: 0
+  },
+  subscriptionStartDate: {
+    type: Date
+  },
+  quote: {
+    type: String,
+    required: function() { return this.role === ROLES.RESTAURANT; }
+  },
+
+  hours: {
+    type: String,
+    default: 'Mon-Sat: 11:00 AM - 10:00 PM'
+  },
+
+  image: {
+    type: String,
+    validate: {
+      validator: function(v) {
+        // Basic URL validation
+        if (!v) return true; // Allow empty
+        return /^https?:\/\/.+\.(jpg|jpeg|png|webp)$/i.test(v);
+      },
+      message: 'Invalid image URL format'
+    }
+  },
+  coverImage: {
+    type: String,
+    validate: {
+      validator: function(v) {
+        // Basic URL validation
+        if (!v) return true; // Allow empty
+        return /^https?:\/\/.+\.(jpg|jpeg|png|webp)$/i.test(v);
+      },
+      message: 'Invalid image URL format'
+    }
+  },
+
+  // Status management
   status: {
     type: String,
     enum: ['pending', 'approved', 'rejected'],
@@ -83,16 +116,20 @@ const userSchema = new mongoose.Schema({
       return this.role === ROLES.RESTAURANT ? 'pending' : undefined;
     }
   },
-  lastStatusUpdate: {
-    type: Date
-  },
-  statusUpdateReason: {
-    type: String
+  lastStatusUpdate: Date,
+  statusUpdateReason: String,
+  
+  // Admin fields
+  adminCode: {
+    type: String,
+    select: false,
+    sparse: true
   }
 }, {
   timestamps: true
 });
 
+// Document methods
 userSchema.methods.generateVerificationToken = function() {
   const rawToken = crypto.randomBytes(32).toString('hex');
   const hashedToken = crypto
@@ -102,9 +139,9 @@ userSchema.methods.generateVerificationToken = function() {
 
   this.verificationToken = hashedToken;
   this.verificationTokenUsed = false;
-  this.verificationExpires = Date.now() + 24 * 60 * 60 * 1000; 
+  this.verificationExpires = Date.now() + 24 * 60 * 60 * 1000;
 
-  return rawToken; 
+  return rawToken;
 };
 
 userSchema.methods.generateVerificationCode = function() {
@@ -127,18 +164,17 @@ userSchema.methods.generatePasswordResetToken = function() {
   return resetToken;
 };
 
+// Password hashing middleware
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password, 12);
   next();
 });
 
+// Password comparison method
 userSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
-
-// MongoDB will automatically create indexes for unique fields
-// No need to explicitly create indexes here
 
 export const User = mongoose.model('User', userSchema);
 export default User;

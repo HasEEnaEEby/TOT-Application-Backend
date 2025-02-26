@@ -2,8 +2,7 @@ import express from 'express';
 import authController from '../controllers/authController.js';
 import {
   optionalAuth,
-  protect,
-  admin
+  protect
 } from '../middleware/authMiddleware.js';
 import { validateRequest } from '../middleware/validateRequest.js';
 import logger from '../utils/logger.js';
@@ -12,8 +11,30 @@ import {
   loginValidator,
   registerValidator
 } from '../validators/authValidator.js';
+import {
+  uploadProfileImage,
+  uploadCoverImage
+} from '../controllers/imageUploadController.js'; 
+import multer from 'multer';
 
 const router = express.Router();
+
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow only image files
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only JPEG, PNG, and WebP are allowed.'), false);
+    }
+  }
+});
 
 /**
  * Public routes
@@ -114,6 +135,21 @@ router.get('/profile',
 router.patch('/profile',
   protect,  // Required authentication
   authController.updateProfile
+);
+
+/**
+ * Profile image upload routes - for all authenticated users
+ */
+router.post('/profile-image', 
+  protect, 
+  upload.single('image'), 
+  uploadProfileImage
+);
+
+router.post('/cover-image', 
+  protect, 
+  upload.single('image'), 
+  uploadCoverImage
 );
 
 export default router;
