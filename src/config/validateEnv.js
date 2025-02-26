@@ -1,4 +1,3 @@
-// src/config/validateEnv.js
 import { cleanEnv, num, port, str } from 'envalid';
 import logger from '../utils/logger.js';
 
@@ -29,6 +28,11 @@ const validateEnv = () => {
       FRONTEND_URL: str({ default: 'http://localhost:3000' }),
       BACKEND_URL: str({ default: 'http://localhost:4000' }),
       CORS_ORIGIN: str({ default: 'http://localhost:3000' }),
+      
+      // Security
+      COOKIE_SECRET: str({ default: 'your-cookie-secret-key-here' }),
+      SESSION_SECRET: str({ default: 'your-session-secret-key-here' }),
+      SESSION_EXPIRE: num({ default: 86400000 }),
       
       // Logging
       LOG_LEVEL: str({ 
