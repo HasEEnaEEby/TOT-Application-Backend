@@ -458,6 +458,47 @@ export class AuthService {
       throw error;
     }
   }
+
+  // In the existing AuthService class
+static async getProfile(userId) {
+  try {
+    const user = await User.findById(userId)
+      .select('-password -resetPasswordToken -resetPasswordExpires -verificationToken -verificationExpires');
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    // Customize the returned profile based on user role
+    const profileData = {
+      _id: user._id,
+      email: user.email,
+      username: user.username,
+      role: user.role,
+      isEmailVerified: user.isEmailVerified,
+      status: user.status
+    };
+
+    // Add role-specific details
+    if (user.role === 'restaurant') {
+      profileData.restaurantName = user.restaurantName;
+      profileData.location = user.location;
+      profileData.contactNumber = user.contactNumber;
+    } else if (user.role === 'customer') {
+      profileData.firstName = user.firstName;
+      profileData.lastName = user.lastName;
+      profileData.phoneNumber = user.phoneNumber;
+    }
+
+    return profileData;
+  } catch (error) {
+    logger.error('Error fetching user profile', {
+      userId,
+      error: error.message
+    });
+    throw new AppError('Failed to retrieve user profile', 500);
+  }
+}
 }
 
 export default AuthService;
