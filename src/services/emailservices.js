@@ -85,28 +85,29 @@ class EmailService {
       if (!user || !verificationToken) {
         throw new Error('Missing user or verification token');
       }
-
+  
       logger.info('Preparing verification email', {
         userId: user._id,
         email: user.email,
         tokenPreview: verificationToken.substring(0, 10) + '...'
       });
-
-      // Use environment variable for frontend URL with fallback
-      const verificationLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email/${verificationToken}`;
+  
+      // Generate platform-specific verification links
+      const webVerificationLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email/${verificationToken}`;
+      const mobileVerificationLink = `tot://verify-email/${verificationToken}`;
       
       const result = await this.sendEmail({
         to: user.email,
         subject: '✨ Verify Your TOT Account',
-        html: this.generateVerificationEmail(user, verificationLink)
+        html: this.generateVerificationEmail(user, webVerificationLink, mobileVerificationLink)
       });
-
+  
       logger.info('Verification email sent successfully', {
         userId: user._id,
         email: user.email,
         messageId: result.messageId
       });
-
+  
       return result;
     } catch (error) {
       logger.error('Failed to send verification email', {
@@ -116,6 +117,46 @@ class EmailService {
       });
       throw error;
     }
+  }
+  
+  generateVerificationEmail(user, webLink, mobileLink) {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Verify Your TOT Account</title>
+        <style>
+          a { text-decoration: none; }
+          a:hover { text-decoration: underline; }
+        </style>
+      </head>
+      <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f9fafb;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: white; border-radius: 15px; overflow: hidden; margin-top: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+          <!-- Existing email template content -->
+          
+          <!-- Verification Links Section -->
+          <div style="margin-top: 30px; text-align: center; padding: 15px; background-color: #F3F4F6; border-radius: 8px;">
+            <p style="color: #4B5563; font-size: 14px; margin-bottom: 10px;">
+              Verify on Web: 
+              <a href="${webLink}" style="color: #3B82F6; word-break: break-all;">
+                ${webLink}
+              </a>
+            </p>
+            <p style="color: #4B5563; font-size: 14px; margin-top: 0;">
+              Verify on Mobile: 
+              <a href="${mobileLink}" style="color: #3B82F6; word-break: break-all;">
+                ${mobileLink}
+              </a>
+            </p>
+          </div>
+  
+          <!-- Existing footer -->
+        </div>
+      </body>
+      </html>
+    `;
   }
 
   generateVerificationEmail(user, verificationLink) {
