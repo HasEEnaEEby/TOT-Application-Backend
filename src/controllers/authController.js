@@ -313,19 +313,47 @@ export const updateProfile = catchAsync(async (req, res) => {
     throw new AppError('Authentication required', 401);
   }
 
+  // Combine body and file data
+  const updateData = {
+    ...req.body,
+    ...(req.file && { image: req.file }) // Add file if uploaded
+  };
+
   logger.info('Processing profile update', {
     userId: req.user._id,
-    fields: Object.keys(req.body),
+    fields: Object.keys(updateData),
     requestId: req.id
   });
 
-  const updatedUser = await AuthService.updateProfile(req.user._id, req.body);
+  const updatedUser = await AuthService.updateProfile(req.user._id, updateData);
 
   res.json({
     status: 'success',
     data: { user: updatedUser }
   });
 });
+
+
+/**
+ * Generate JWT Token
+ * @param {Object} user - User object from MongoDB
+ * @returns {string} - Signed JWT token
+ */
+const signToken = (user) => {
+  if (!user || !user._id) {
+    console.error("🚨 Error: Missing user ID while signing token!");
+    throw new Error("User ID is required to generate a token.");
+  }
+
+  console.log("🔍 Signing Token for User ID:", user._id.toString());
+
+  return jwt.sign(
+    { id: user._id.toString(), role: user.role, restaurantId: user.restaurantId || user._id.toString() }, // Ensure correct restaurant ID
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN }
+  );
+};
+
 
 export default {
   signup,
@@ -337,5 +365,6 @@ export default {
   getProfile,
   updateProfile,
   adminRegister,
-  adminLogin
+  adminLogin,
+  signToken
 };
