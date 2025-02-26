@@ -2,8 +2,10 @@
 import dotenv from 'dotenv';
 import EventEmitter from 'events';
 import express from 'express';
+import http from 'http'; // Import http module
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import 'winston-daily-rotate-file';
 import connectDB from './src/config/db.js';
 import { validateEmailConfig } from './src/config/email.js';
 import { configureProcessHandlers } from './src/config/processHandlers.js';
@@ -13,7 +15,7 @@ import validateEnv from './src/config/validateEnv.js';
 import errorMiddleware from './src/middleware/errorMiddleware.js';
 import emailService from './src/services/emailservices.js';
 import logger from './src/utils/logger.js';
-import 'winston-daily-rotate-file';
+import socketIO from './src/utils/socketIO.js'; // Import socketIO
 
 // Load and validate environment variables
 dotenv.config({ path: join(dirname(fileURLToPath(import.meta.url)), '.env') });
@@ -28,6 +30,8 @@ try {
 
 // Initialize Express app
 const app = express();
+// Create HTTP server from Express app
+const httpServer = http.createServer(app);
 const port = process.env.PORT || 4000;
 const environment = process.env.NODE_ENV || 'development';
 const apiPrefix = '/api/v1';
@@ -98,8 +102,11 @@ const startServer = async () => {
       throw dbError;
     }
 
-    // Start Express server
-    const server = app.listen(port, () => {
+    // Initialize Socket.IO with the HTTP server
+    socketIO.initSocketIO(httpServer);
+
+    // Start HTTP server (not Express app directly)
+    httpServer.listen(port, () => {
       logger.info('=================================');
       logger.info(`✨ Environment: ${environment}`);
       logger.info(`🚀 Server running on port: ${port}`);
@@ -108,18 +115,18 @@ const startServer = async () => {
     });
 
     // Configure graceful shutdown
-    configureProcessHandlers(server);
+    configureProcessHandlers(httpServer); // Pass httpServer, not Express server
 
     // Handle unhandled rejections
     process.on('unhandledRejection', (err) => {
       logger.error('❌ Unhandled Rejection:', { error: err.message, stack: err.stack });
       // Don't exit in development to help with debugging
       if (environment === 'production') {
-        server.close(() => process.exit(1));
+        httpServer.close(() => process.exit(1));
       }
     });
 
-    return server;
+    return httpServer;
   } catch (error) {
     logger.error('❌ Server initialization failed:', { 
       error: error.message,

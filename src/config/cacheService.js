@@ -1,6 +1,3 @@
-import Redis from 'ioredis';
-import { logger } from '../utils/logger.js';
-
 class CacheService {
   constructor() {
     this.client = process.env.REDIS_URL 
@@ -40,6 +37,16 @@ class CacheService {
     } catch (error) {
       logger.error('Cache Delete Error:', error);
     }
+  }
+
+  // ✅ Add missing getRestaurantStatus method
+  async getRestaurantStatus(restaurantId) {
+    return await this.get(`restaurantStatus:${restaurantId}`);
+  }
+
+  // ✅ Add missing setRestaurantStatus method
+  async setRestaurantStatus(restaurantId, status) {
+    await this.set(`restaurantStatus:${restaurantId}`, status, 86400); // Expire in 24 hours
   }
 }
 
