@@ -16,15 +16,7 @@ Developed with Node.js, Express.js, and MongoDB, it follows best practices in cl
  API Documentation - Built-in API docs using Swagger.
 
 # Tech Stack
-
-Technology	                                Purpose
-Node.js & Express.js	        Backend framework & API handling
-MongoDB & Mongoose	          NoSQL database & ORM
-JWT & Bcrypt.js	              Authentication & security
-Cloudinary	                  Image hosting & management
-Nodemailer	                  Email notifications
-Socket.io	                    Real-time order updates
-Mocha & Chai	                Unit & integration testing
+<img width="601" alt="Screenshot 2025-03-03 at 10 10 31" src="https://github.com/user-attachments/assets/7f2abe37-35cd-4bc2-ad1e-0c17e878722c" />
 
 
 # Project Structure
