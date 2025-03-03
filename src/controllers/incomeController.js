@@ -12,13 +12,10 @@ const incomeController = {
       role: 'restaurant'
     }).select('restaurantName subscriptionAmount subscriptionPro lastLogin createdAt status');
 
-    // Process monthly data for the last 6 months
     const monthlyData = await processMonthlyData(restaurants);
     
-    // Calculate overall stats
     const stats = calculateStats(restaurants, monthlyData);
     
-    // Get recent transactions
     const transactions = getRecentTransactions(restaurants);
 
     logger.info('Income data retrieved successfully');
@@ -37,8 +34,6 @@ const incomeController = {
   generateReport: catchAsync(async (req, res) => {
     logger.info('Generating income report');
     
-    // For now, return the same data as getIncomeData
-    // In future, you might want to generate a PDF report
     const restaurants = await User.find({
       role: 'restaurant'
     }).select('restaurantName subscriptionAmount subscriptionPro lastLogin createdAt status');
@@ -134,6 +129,42 @@ function calculateStats(restaurants, monthlyData) {
       premiumPackages
     };
   }
+
+  export const uploadImage = catchAsync(async (req, res, next) => {
+    if (!req.file) {
+      console.error('⚠️ No image uploaded:', req.body, req.files);
+      return next(new AppError('Please upload an image', 400));
+    }
+  
+    console.log(`✅ Received file: ${req.file.originalname}, Type: ${req.file.mimetype}`);
+  
+    try {
+      // Upload to Cloudinary
+      const cloudinaryResponse = await new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          { folder: 'uploads', transformation: [{ width: 800, crop: 'limit' }] },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        );
+  
+        const stream = require('stream');
+        const bufferStream = new stream.PassThrough();
+        bufferStream.end(req.file.buffer);
+        bufferStream.pipe(uploadStream);
+      });
+  
+      res.status(200).json({
+        status: 'success',
+        message: 'Image uploaded successfully',
+        imageUrl: cloudinaryResponse.secure_url
+      });
+    } catch (error) {
+      console.error('❌ Upload Error:', error);
+      return next(new AppError('Image upload failed', 500));
+    }
+  });
 
 function getRecentTransactions(restaurants) {
   return restaurants
