@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "start": "nodemon index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "NODE_OPTIONS=--experimental-vm-modules mocha --import ./src/tests/setup.mjs --recursive 'src/tests/**/*.test.js'",
+    "test:watch": "NODE_OPTIONS=--experimental-vm-modules mocha --import ./src/tests/setup.mjs --recursive 'src/tests/**/*.test.js' --watch",
+    "test:auth": "NODE_OPTIONS=--experimental-vm-modules mocha 'src/tests/services/authServices.test.js' 'src/tests/controllers/authController.test.js' 'src/tests/middleware/authMiddleware.test.js'",
+    "test:coverage": "NODE_OPTIONS=--experimental-vm-modules c8 mocha --recursive 'src/tests/**/*.test.js'"
   },
   "author": "",
   "license": "ISC",
@@ -31,13 +34,32 @@
     "ioredis": "^5.5.0",
     "joi": "^17.13.3",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.9.2",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.9.16",
+    "qrcode": "^1.5.4",
     "socket.io": "^4.8.1",
+    "uuidv4": "^6.2.13",
     "winston": "^3.17.0",
     "winston-daily-rotate-file": "^5.0.0",
     "xss-clean": "^0.1.4"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.26.9",
+    "@babel/preset-env": "^7.26.9",
+    "@babel/register": "^7.25.9",
+    "c8": "^8.0.1",
+    "chai": "^5.2.0",
+    "chai-http": "^5.1.1",
+    "express-mock-request": "^0.0.2",
+    "mocha": "^11.1.0",
+    "mocha-emoji-reporter": "^1.1.2",
+    "mongodb-memory-server": "^10.1.4",
+    "mongoose": "^8.11.0",
+    "mongoose-mock": "^0.4.0",
+    "node-mocks-http": "^1.16.2",
+    "sinon": "^19.0.2",
+    "sinon-chai": "^4.0.0",
+    "supertest": "^7.0.0"
   }
 }
