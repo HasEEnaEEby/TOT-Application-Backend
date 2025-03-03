@@ -2,12 +2,12 @@ import express from 'express';
 import multer from 'multer';
 import appConfig from '../config/appConfig.js';
 import {
-    uploadCoverImage,
-    uploadProfileImage
+  uploadCoverImage,
+  uploadProfileImage
 } from '../controllers/imageUploadController.js';
 import {
-    protect,
-    restaurant
+  protect,
+  restaurant
 } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
