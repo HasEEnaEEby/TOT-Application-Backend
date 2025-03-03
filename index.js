@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import EventEmitter from 'events';
 import express from 'express';
 import http from 'http'; // Import http module
+import os from 'os'; // Import os module
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import 'winston-daily-rotate-file';
@@ -15,7 +16,7 @@ import validateEnv from './src/config/validateEnv.js';
 import errorMiddleware from './src/middleware/errorMiddleware.js';
 import emailService from './src/services/emailservices.js';
 import logger from './src/utils/logger.js';
-import socketIO from './src/utils/socketIO.js'; // Import socketIO
+import socketIO from './src/utils/socketIO.js'; 
 
 // Load and validate environment variables
 dotenv.config({ path: join(dirname(fileURLToPath(import.meta.url)), '.env') });
@@ -106,11 +107,23 @@ const startServer = async () => {
     socketIO.initSocketIO(httpServer);
 
     // Start HTTP server (not Express app directly)
-    httpServer.listen(port, () => {
+    httpServer.listen(port, '0.0.0.0', () => {
       logger.info('=================================');
       logger.info(`✨ Environment: ${environment}`);
       logger.info(`🚀 Server running on port: ${port}`);
-      logger.info(`📍 API endpoint: http://localhost:${port}${apiPrefix}`);
+      logger.info(`📍 API endpoint: http://192.168.254.102:${port}${apiPrefix}`);
+      logger.info(`📍 Local endpoint: http://localhost:${port}${apiPrefix}`);
+      
+      // Log network interfaces
+      const networkInterfaces = os.networkInterfaces();
+      Object.keys(networkInterfaces).forEach((interfaceName) => {
+        networkInterfaces[interfaceName].forEach((details) => {
+          if (details.family === 'IPv4' && !details.internal) {
+            logger.info(`📍 Network Interface ${interfaceName}: ${details.address}`);
+          }
+        });
+      });
+      
       logger.info('=================================');
     });
 
