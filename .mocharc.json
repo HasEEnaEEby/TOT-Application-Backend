@@ -1,0 +1,3 @@
+{
+  "import": ["./src/tests/setup.mjs"]
+}
