@@ -1,11 +1,12 @@
 import adminRoutes from '../routes/adminRoutes.js';
+import analyticsRoutes from '../routes/analyticsRoutes.js';
 import authRoutes from '../routes/authRoutes.js';
+import imageUploadRoutes from '../routes/imageUploadRoutes.js';
 import incomeRoutes from '../routes/incomeRoutes.js';
 import managementRoutes from '../routes/managementroutes.js';
 import notificationRoutes from '../routes/notificationRoutes.js';
 import orderRoutes from '../routes/orderRoutes.js';
 import restaurantRoutes from '../routes/restaurantsRoutes.js';
-import imageUploadRoutes from '../routes/imageUploadRoutes.js'; 
 import tableRoutes from '../routes/tableRoutes.js';
 import taskRoutes from '../routes/TaskROutes.js';
 import testRoutes from '../routes/testRoutes.js';
@@ -60,7 +61,10 @@ export const configureRoutes = (app, apiPrefix, environment) => {
     { path: '/tasks', router: taskRoutes },
     { path: '/notifications', router: notificationRoutes },
     { path: '/upload', router: imageUploadRoutes },
+    { path: '/analytics', router: analyticsRoutes },
   ];
+
+  
 
   // Register all routes with proper prefix
   routes.forEach(({ path, router }) => {
@@ -95,3 +99,4 @@ export const configureRoutes = (app, apiPrefix, environment) => {
     next(new AppError(`Route ${req.originalUrl} not found`, 404));
   });
 };
+
