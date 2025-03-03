@@ -19,4 +19,13 @@ router.get('/restaurant/:restaurantId/available', customerTableController.getAva
 router.get('/:tableId/details', customerTableController.getTableById);
 router.post('/:tableId/request', protect, restrictTo('customer'), customerTableController.requestTable);
 
+// QR Code routes for restaurant owners
+router.get('/:tableId/qrcode', protect, restrictTo('restaurant'), tableController.generateTableQRCode);
+router.post('/:tableId/refresh-qrcode', protect, restrictTo('restaurant'), tableController.refreshTableQRCode);
+
+// QR code validation routes
+router.post('/validate-qr', customerTableController.validateTableQR);
+router.post('/:tableId/verify-for-order', protect, restrictTo('customer'), customerTableController.verifyTableForOrder);
+
+
 export default router;
