@@ -115,6 +115,17 @@ const restaurantManagementSchema = new mongoose.Schema({
     transactionId: String
   }],
 
+  bankDetails: {
+    accountName: String,
+    accountNumber: String,
+    bankName: String,
+    branch: String
+  },
+
+  paymentQRCode: {
+    type: String, // URL to the QR code image
+  },
+
   // Comprehensive Performance Metrics
   metrics: {
     totalRevenue: {
