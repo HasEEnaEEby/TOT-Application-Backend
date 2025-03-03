@@ -1,5 +1,10 @@
 import express from 'express';
+import multer from 'multer';
 import authController from '../controllers/authController.js';
+import {
+  uploadCoverImage,
+  uploadProfileImage
+} from '../controllers/imageUploadController.js';
 import {
   optionalAuth,
   protect
@@ -11,11 +16,6 @@ import {
   loginValidator,
   registerValidator
 } from '../validators/authValidator.js';
-import {
-  uploadProfileImage,
-  uploadCoverImage
-} from '../controllers/imageUploadController.js'; 
-import multer from 'multer';
 
 const router = express.Router();
 
@@ -123,6 +123,28 @@ router.post('/admin/login',
   authController.adminLogin
 );
 
+router.post('/biometric-login',
+  validateRequest(emailValidator), // Validate email
+  (req, res, next) => {
+    logger.info('Biometric login attempt', { 
+      email: req.body.email,
+      requestId: req.id 
+    });
+    next();
+  },
+  authController.biometricLogin
+);
+router.post('/toggle-biometric-login', 
+  protect,  // Require authentication
+  (req, res, next) => {
+    logger.info('Toggle biometric login attempt', { 
+      userId: req.user?._id,
+      requestId: req.id 
+    });
+    next();
+  },
+  authController.toggleBiometricLogin
+);
 
 /**
  * Protected routes - require authentication
