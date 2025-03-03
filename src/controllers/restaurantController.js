@@ -357,6 +357,26 @@ export const restaurantController = {
     });
   }),
 
+  getMenuItemsByRestaurant: catchAsync(async (req, res) => {
+    const { restaurantId } = req.params;
+    
+    logger.info('Fetching menu items for restaurant', {
+      requestedRestaurantId: restaurantId
+    });
+  
+    // Find menu items for the specified restaurant
+    const menuItems = await MenuItem.find({ 
+      restaurant: restaurantId,
+      isAvailable: true // Only return available items by default
+    }).sort({ category: 1, name: 1 });
+  
+    res.status(200).json({
+      status: 'success',
+      results: menuItems.length,
+      data: menuItems
+    });
+  }),
+
   toggleMenuItemAvailability: catchAsync(async (req, res) => {
     const menuItem = await MenuItem.findOne({
       _id: req.params.id,
