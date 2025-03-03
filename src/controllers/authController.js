@@ -355,6 +355,80 @@ const signToken = (user) => {
 };
 
 
+/**
+ * Biometric login controller
+ * @route POST /api/v1/auth/biometric-login
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+export const biometricLogin = catchAsync(async (req, res) => {
+  const { email } = req.body;
+
+  logger.info('Processing biometric login request', { 
+    email, 
+    requestId: req.id 
+  });
+
+  // Validate email and check if biometric login is enabled for the user
+  const result = await AuthService.biometricLogin(email);
+  
+  res.cookie('token', result.token, getCookieOptions());
+  res.cookie('refreshToken', result.refreshToken, {
+    ...getCookieOptions(),
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+  });
+
+  logger.info('Biometric login successful', {
+    userId: result.user._id,
+    role: result.user.role,
+    requestId: req.id
+  });
+
+  const responseData = {
+    status: 'success',
+    data: {
+      user: result.user,
+      token: result.token,
+      refreshToken: result.refreshToken,
+      redirectPath: result.user.role === 'restaurant' 
+        ? '/restaurant/dashboard' 
+        : '/customer-dashboard'
+    }
+  };
+
+  res.json(responseData);
+});
+
+/**
+ * Toggle biometric login for a user
+ * @route POST /api/v1/auth/toggle-biometric-login
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+export const toggleBiometricLogin = catchAsync(async (req, res) => {
+  const { enabled } = req.body;
+
+  if (enabled === undefined) {
+    throw new AppError('Enabled status is required', 400);
+  }
+
+  logger.info('Toggle biometric login', {
+    userId: req.user._id,
+    enabled,
+    requestId: req.id
+  });
+
+  const user = await AuthService.toggleBiometricLogin(req.user._id, enabled);
+
+  res.json({
+    status: 'success',
+    data: { 
+      biometricLoginEnabled: user.biometricLoginEnabled 
+    }
+  });
+});
+
+
 export default {
   signup,
   login,
@@ -366,5 +440,7 @@ export default {
   updateProfile,
   adminRegister,
   adminLogin,
-  signToken
+  signToken,
+  biometricLogin,
+  toggleBiometricLogin
 };
