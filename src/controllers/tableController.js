@@ -2,6 +2,7 @@ import Table from '../models/Table.js';
 import AppError from '../utils/AppError.js';
 import { catchAsync } from '../utils/catchAsync.js';
 import logger from '../utils/logger.js';
+import { qrCodeUtils } from '../utils/qrCodeUtils.js';
 
 export const tableController = {
   // Get tables for the authenticated restaurant
@@ -61,7 +62,7 @@ export const tableController = {
     const restaurantId = req.user._id;
     
     // Prevent updating restricted fields
-    ['_id', 'id', 'restaurant', 'createdAt'].forEach(field => delete updateData[field]);
+    ['_id', 'id', 'restaurant', 'createdAt', 'qrCode'].forEach(field => delete updateData[field]);
     
     // Find table and verify ownership
     const table = await Table.findOne({ 
@@ -169,6 +170,108 @@ export const tableController = {
     res.status(200).json({
       status: 'success',
       data: { table }
+    });
+  }),
+
+  // Generate QR code for a table
+  generateTableQRCode: catchAsync(async (req, res) => {
+    const { tableId } = req.params;
+    const restaurantId = req.user._id;
+    const { format = 'png' } = req.query;
+    
+    // Find table and verify ownership
+    const table = await Table.findOne({ 
+      _id: tableId,
+      restaurant: restaurantId
+    });
+    
+    if (!table) {
+      throw new AppError('Table not found or does not belong to this restaurant', 404);
+    }
+    
+    // Refresh the QR code to ensure a new one is generated
+    await table.refreshQRCode();
+    
+    // Generate QR code in requested format
+    if (format === 'json') {
+      // Return the QR token data as JSON
+      res.status(200).json({
+        status: 'success',
+        data: {
+          tableId: table._id,
+          tableNumber: table.number,
+          restaurantId: table.restaurant,
+          qrToken: table.qrCode.token,
+          expiresAt: table.qrCode.expiresAt
+        }
+      });
+    } else if (format === 'dataurl') {
+      // Return data URL for embedding in web pages
+      const dataURL = await qrCodeUtils.generateQRCodeDataURL(
+        table.restaurant.toString(),
+        table._id.toString(), 
+        table.qrCode.token
+      );
+      
+      res.status(200).json({
+        status: 'success',
+        data: {
+          tableId: table._id,
+          tableNumber: table.number,
+          dataURL
+        }
+      });
+    } else {
+      // Default to PNG image
+      const qrBuffer = await qrCodeUtils.generateQRCodeBuffer(
+        table.restaurant.toString(),
+        table._id.toString(), 
+        table.qrCode.token
+      );
+      
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Content-Disposition', `attachment; filename="table_${table.number}_qr.png"`);
+      res.status(200).send(qrBuffer);
+    }
+    
+    logger.info('QR code generated for table', { 
+      tableId,
+      restaurantId,
+      format
+    });
+  }),
+
+  // Refresh QR code for a table
+  refreshTableQRCode: catchAsync(async (req, res) => {
+    const { tableId } = req.params;
+    const restaurantId = req.user._id;
+    
+    // Find table and verify ownership
+    const table = await Table.findOne({ 
+      _id: tableId,
+      restaurant: restaurantId
+    });
+    
+    if (!table) {
+      throw new AppError('Table not found or does not belong to this restaurant', 404);
+    }
+    
+    // Refresh the QR code
+    await table.refreshQRCode();
+    
+    logger.info('QR code refreshed for table', { 
+      tableId,
+      restaurantId
+    });
+    
+    res.status(200).json({
+      status: 'success',
+      message: 'QR code refreshed successfully',
+      data: {
+        tableId: table._id,
+        qrToken: table.qrCode.token,
+        expiresAt: table.qrCode.expiresAt
+      }
     });
   }),
 
