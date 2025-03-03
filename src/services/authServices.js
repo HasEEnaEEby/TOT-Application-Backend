@@ -102,7 +102,6 @@ export class AuthService {
       // Check email uniqueness
       const existingEmail = await User.findOne({ email: adminData.email });
       if (existingEmail) {
-        throw new AppError('Email already exists', 400);
       }
   
       // Generate admin username if not provided
@@ -432,6 +431,45 @@ export class AuthService {
     }
   }
 
+
+/**
+ * Toggle biometric login for a user
+ * @param {string} userId - User's ID
+ * @param {boolean} enabled - Enable or disable biometric login
+ * @returns {Object} - Updated user object
+ */
+static async toggleBiometricLogin(userId, enabled) {
+  try {
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    // Additional security check: Only allow for verified accounts
+    if (!user.isEmailVerified) {
+      throw new AppError('Email must be verified to enable biometric login', 403);
+    }
+
+    user.biometricLoginEnabled = enabled;
+    await user.save();
+
+    logger.info('Biometric login status updated', {
+      userId: user._id,
+      enabled: user.biometricLoginEnabled
+    });
+
+    return user;
+  } catch (error) {
+    logger.error('Error toggling biometric login', {
+      userId,
+      enabled,
+      error: error.message
+    });
+    throw error;
+  }
+}
+
   // Update Profile Method
   static async updateProfile(userId, updateData) {
     try {
@@ -459,7 +497,11 @@ export class AuthService {
     }
   }
 
-  // In the existing AuthService class
+/**
+ * Get user profile method
+ * @param {string} userId - User ID to fetch profile
+ * @returns {Object} User profile data
+ */
 static async getProfile(userId) {
   try {
     const user = await User.findById(userId)
@@ -476,7 +518,9 @@ static async getProfile(userId) {
       username: user.username,
       role: user.role,
       isEmailVerified: user.isEmailVerified,
-      status: user.status
+      status: user.status,
+      image: user.image, // Include profile image for all users
+      coverImage: user.coverImage // Include cover image for all users
     };
 
     // Add role-specific details
@@ -484,10 +528,14 @@ static async getProfile(userId) {
       profileData.restaurantName = user.restaurantName;
       profileData.location = user.location;
       profileData.contactNumber = user.contactNumber;
+      profileData.hours = user.hours;
+      profileData.quote = user.quote;
     } else if (user.role === 'customer') {
+      profileData.fullName = user.fullName;
       profileData.firstName = user.firstName;
       profileData.lastName = user.lastName;
-      profileData.phoneNumber = user.phoneNumber;
+      profileData.phone = user.phone;
+      profileData.address = user.address;
     }
 
     return profileData;
@@ -497,6 +545,95 @@ static async getProfile(userId) {
       error: error.message
     });
     throw new AppError('Failed to retrieve user profile', 500);
+  }
+}
+
+/**
+ * Biometric login method
+ * @param {string} email - User's email
+ * @returns {Object} - Login result with user, token, and refresh token
+ */
+static async biometricLogin(email) {
+  // Find user by email
+  const user = await User.findOne({ email: email.toLowerCase() });
+
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  // Check if biometric login is enabled for the user
+  if (!user.biometricLoginEnabled) {
+    throw new AppError('Biometric login is not enabled for this account', 403);
+  }
+
+  // Update last login time
+  user.lastLogin = new Date();
+  await user.save();
+
+  // Generate new tokens
+  const token = signToken(user);
+  const refreshToken = generateRefreshToken(user);
+
+  // Optional: Log biometric login attempt
+  logger.info('Biometric login processed', {
+    userId: user._id,
+    role: user.role
+  });
+
+  return {
+    user: formatUserResponse(user),
+    token,
+    refreshToken
+  };
+}
+
+/**
+ * Update user profile method
+ * @param {string} userId - User ID to update
+ * @param {Object} updateData - Data to update
+ * @returns {Object} Updated user profile
+ */
+static async updateProfile(userId, updateData) {
+  try {
+    // Remove sensitive fields that shouldn't be updated directly
+    const sanitizedData = { ...updateData };
+    const restrictedFields = [
+      'password', 'role', 'isEmailVerified', 'status', 
+      'verificationToken', 'verificationExpires', 'verificationTokenUsed',
+      'resetPasswordToken', 'resetPasswordExpires'
+    ];
+    
+    restrictedFields.forEach(field => delete sanitizedData[field]);
+
+    // Handle customer profile data
+    if (sanitizedData.firstName && sanitizedData.lastName) {
+      sanitizedData.fullName = `${sanitizedData.firstName} ${sanitizedData.lastName}`;
+    }
+
+    // Process file upload if present
+    if (updateData.image && typeof updateData.image === 'object') {
+      // File upload was handled by multer, but we need to get the URL
+      // from wherever the file was stored
+      const uploadedFile = updateData.image;
+      // This would be replaced with your actual file URL generation logic
+      sanitizedData.image = `/uploads/profile-images/${uploadedFile.filename}`;
+    }
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      sanitizedData,
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    // Return a sanitized version of the user
+    return user;
+  } catch (error) {
+    logger.error('Failed to update profile:', error);
+    throw error;
   }
 }
 }
