@@ -5,15 +5,7 @@ TOT is a smart restaurant ordering system designed to provide a seamless and eff
 Developed with Node.js, Express.js, and MongoDB, it follows best practices in clean architecture, microservices, authentication, and testing.
 
 # Features
- Role-Based Access Control (RBAC) - Admins, Restaurant Owners, and Customers have distinct permissions.
- JWT Authentication & Authorization - Secure login using JSON Web Tokens.
- Dynamic Menu & Orders - Restaurants can update menus, and customers can place, track, and modify orders in real-time.
- Table Management System - Assign and manage tables efficiently.
- Image Upload with Cloudinary - Secure image storage for restaurant menus and items.
- Email & Notification Service - Automated emails for order confirmations and account actions.
- Real-Time Order Updates - WebSockets for live order status tracking.
- Comprehensive Testing - Unit & integration tests with Mocha & Chai.
- API Documentation - Built-in API docs using Swagger.
+<img width="1228" alt="Screenshot 2025-03-03 at 10 13 22" src="https://github.com/user-attachments/assets/29fd2f19-563b-4718-9e13-18aae549c765" />
 
 # Tech Stack
 <img width="601" alt="Screenshot 2025-03-03 at 10 10 31" src="https://github.com/user-attachments/assets/7f2abe37-35cd-4bc2-ad1e-0c17e878722c" />
