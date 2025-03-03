@@ -9,8 +9,8 @@ class EmailService {
       secure: false,
       requireTLS: true,
       auth: {
-        user: "fe22594c3058be",
-        pass: "36be25f5ed5a3b"
+        user: "3e3dd4fbe672ce",
+        pass: "d2c36c729595c8"
       },
       tls: {
         ciphers: 'SSLv3',
