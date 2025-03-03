@@ -525,6 +525,8 @@ router.route('/admin/restaurants/:id')
     })
   );
 
+
+  router.get('/menuitems/:restaurantId', protect, restaurantController.getMenuItemsByRestaurant);
 // Global Error Handler
 // --------------------------------
 
