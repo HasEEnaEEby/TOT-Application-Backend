@@ -148,3 +148,9 @@ export const adminRegisterValidator = {
     }
   }
 };
+
+export const toggleBiometricLoginValidator = [
+  body('enabled')
+    .isBoolean()
+    .withMessage('Enabled status must be a boolean')
+];
