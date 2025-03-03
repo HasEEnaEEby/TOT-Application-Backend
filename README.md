@@ -28,22 +28,7 @@ Mocha & Chai	                Unit & integration testing
 
 
 # Project Structure
-├── src
-│   ├── config/             # Configuration files (DB, Cloudinary, JWT, Mongodb)
-│   ├── constants/          # Global constants (roles, status codes)
-│   ├── controllers/        # Business logic for routes
-│   ├── middleware/         # Authentication, validation, error handling
-│   ├── models/             # Mongoose models for MongoDB
-│   ├── routes/             # API route definitions
-│   ├── services/           # Business logic and database operations
-│   ├── tests/              # Unit & integration tests
-│   ├── utils/              # Reusable utility functions
-│   ├── validators/         # Input validation logic
-│   ├── logs/               # Log files for debugging
-│   ├── index.js            # Main server entry point
-│   ├── package.json        # Dependencies & scripts
-│   ├── .env                # Environment variables
-│   └── .gitignore          # Ignored files for git
+<img width="724" alt="Screenshot 2025-03-03 at 10 06 47" src="https://github.com/user-attachments/assets/ce065379-2eab-41ea-9a4a-04edc1f8e23c" />
 
 
 # Run the Server
